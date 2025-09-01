@@ -7,3 +7,4 @@ install: ## Install all dependencies
 lint: ## Run linting and fix issues
 	uv run --dev ruff check --fix src
 	uv run --dev ruff format src
+	uv run --dev mypy src
