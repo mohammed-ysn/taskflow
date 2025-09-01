@@ -24,6 +24,8 @@ build-backend = "uv_build"
 dev = [
     "mypy>=1.17.1",
     "pre-commit>=4.3.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
     "ruff>=0.12.11",
     "types-click>=7.1.8",
     "types-redis>=4.6.0.20241004",
@@ -122,7 +124,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "D", "ANN"]
+"tests/*" = ["S101", "D", "ANN", "SLF001", "PLR2004", "TC003", "PLC0415", "E501"]
 "examples/*" = ["T20", "D", "S311", "ASYNC109"]
 
 [tool.ruff.lint.pydocstyle]
