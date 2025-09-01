@@ -7,7 +7,9 @@ authors = [
     { name = "mohammed-ysn", email = "mohammedysn15@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pydantic>=2.11.7",
+]
 
 [project.scripts]
 taskflow = "taskflow:main"
@@ -99,6 +101,11 @@ ignore = [
     "TD002",  # Missing author in TODO
     "TD003",  # Missing issue link in TODO
     "FIX002", # Line contains TODO
+    "PLR0913", # Too many arguments (needed for task configuration)
+    "ANN401", # Any type allowed (needed for generic task functions)
+    "FBT001", # Boolean positional arg (OK for internal APIs)
+    "FBT002", # Boolean default value (OK for internal APIs)
+    "RET504", # Unnecessary assignment (sometimes improves readability)
 ]
 
 [tool.ruff.lint.per-file-ignores]
