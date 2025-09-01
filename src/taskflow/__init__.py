@@ -1,8 +1,5 @@
 """Taskflow distributed task queue."""
 
-import sys
+from taskflow.cli import main
 
-
-def main() -> None:
-    """Entry point for taskflow CLI."""
-    sys.stdout.write("Hello from taskflow!\n")
+__all__ = ["main"]
