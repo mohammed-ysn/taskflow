@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "apscheduler>=3.11.0",
     "click>=8.2.1",
     "pydantic>=2.11.7",
     "redis>=6.4.0",
@@ -149,7 +150,7 @@ explicit_package_bases = true
 mypy_path = "src"
 
 [[tool.mypy.overrides]]
-module = ["redis.*", "pytest", "pytest_asyncio"]
+module = ["redis.*", "pytest", "pytest_asyncio", "apscheduler.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
