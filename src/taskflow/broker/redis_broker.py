@@ -33,11 +33,11 @@ class RedisBroker(BaseBroker):
         self.port = port
         self.db = db
         self.decode_responses = decode_responses
-        self._client: redis.Redis | None = None
+        self._client: redis.Redis[bytes] | None = None
 
     async def connect(self) -> None:
         """Establish connection to Redis."""
-        self._client = redis.Redis(
+        self._client = redis.Redis(  # type: ignore[call-overload]
             host=self.host,
             port=self.port,
             db=self.db,
@@ -108,13 +108,15 @@ class RedisBroker(BaseBroker):
 
         # Decode if needed
         if isinstance(task_json, bytes):
-            task_json = task_json.decode("utf-8")
+            task_json_str = task_json.decode("utf-8")
+        else:
+            task_json_str = task_json
 
-        task_data: dict[str, Any] = json.loads(task_json)
+        task_data: dict[str, Any] = json.loads(task_json_str)
 
         # Store task in processing set
         processing_key = f"taskflow:processing:{queue}"
-        await self._client.hset(processing_key, task_data["id"], task_json)
+        await self._client.hset(processing_key, task_data["id"], task_json_str)
 
         return task_data
 
@@ -147,7 +149,8 @@ class RedisBroker(BaseBroker):
             task_json = await self._client.hget(key, task_id)
             if task_json:
                 # Extract queue name from key
-                queue = key.split(":")[-1]
+                key_str = key.decode("utf-8") if isinstance(key, bytes) else key
+                queue = key_str.split(":")[-1]
                 task_data = json.loads(task_json)
                 await self._client.hdel(key, task_id)
                 break
