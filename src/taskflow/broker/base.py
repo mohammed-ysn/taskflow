@@ -63,7 +63,7 @@ class BaseBroker(ABC):
         ...
 
     @abstractmethod
-    async def nack_task(self, task_id: str, requeue: bool = True) -> None:
+    async def nack_task(self, task_id: str, *, requeue: bool = True) -> None:
         """Negative acknowledge task (failed).
 
         Args:
