@@ -15,3 +15,112 @@ taskflow = "taskflow:main"
 [build-system]
 requires = ["uv_build>=0.8.3,<0.9.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.17.1",
+    "pre-commit>=4.3.0",
+    "ruff>=0.12.11",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "F",     # Pyflakes
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "C90",   # mccabe complexity
+    "I",     # isort
+    "N",     # pep8-naming
+    "D",     # pydocstyle
+    "UP",    # pyupgrade
+    "YTT",   # flake8-2020
+    "ANN",   # flake8-annotations
+    "ASYNC", # flake8-async
+    "S",     # flake8-bandit (security)
+    "BLE",   # flake8-blind-except
+    "FBT",   # flake8-boolean-trap
+    "B",     # flake8-bugbear
+    "A",     # flake8-builtins
+    "COM",   # flake8-commas
+    "C4",    # flake8-comprehensions
+    "DTZ",   # flake8-datetimez
+    "T10",   # flake8-debugger
+    "EM",    # flake8-errmsg
+    "EXE",   # flake8-executable
+    "FA",    # flake8-future-annotations
+    "ISC",   # flake8-implicit-str-concat
+    "ICN",   # flake8-import-conventions
+    "LOG",   # flake8-logging
+    "G",     # flake8-logging-format
+    "INP",   # flake8-no-pep420
+    "PIE",   # flake8-pie
+    "T20",   # flake8-print
+    "PYI",   # flake8-pyi
+    "PT",    # flake8-pytest-style
+    "Q",     # flake8-quotes
+    "RSE",   # flake8-raise
+    "RET",   # flake8-return
+    "SLF",   # flake8-self
+    "SLOT",  # flake8-slots
+    "SIM",   # flake8-simplify
+    "TID",   # flake8-tidy-imports
+    "TCH",   # flake8-type-checking
+    "INT",   # flake8-gettext
+    "ARG",   # flake8-unused-arguments
+    "PTH",   # flake8-use-pathlib
+    "TD",    # flake8-todos
+    "FIX",   # flake8-fixme
+    "ERA",   # eradicate
+    "PD",    # pandas-vet
+    "PGH",   # pygrep-hooks
+    "PL",    # Pylint
+    "TRY",   # tryceratops
+    "FLY",   # flynt
+    "NPY",   # NumPy-specific
+    "PERF",  # Perflint
+    "FURB",  # refurb
+    "RUF",   # Ruff-specific
+]
+ignore = [
+    "D100",  # Missing docstring in public module
+    "D101",  # Missing docstring in public class
+    "D102",  # Missing docstring in public method
+    "D103",  # Missing docstring in public function
+    "D104",  # Missing docstring in public package
+    "D105",  # Missing docstring in magic method
+    "D106",  # Missing docstring in public nested class
+    "D107",  # Missing docstring in __init__
+    "S101",   # Use of assert (needed for tests)
+    "TD002",  # Missing author in TODO
+    "TD003",  # Missing issue link in TODO
+    "FIX002", # Line contains TODO
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "D", "ANN"]
+"examples/*" = ["T20", "D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_unimported = false
+no_implicit_optional = true
+check_untyped_defs = true
+show_error_codes = true
+namespace_packages = true
+explicit_package_bases = true
