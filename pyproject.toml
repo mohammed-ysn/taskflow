@@ -8,7 +8,9 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "click>=8.2.1",
     "pydantic>=2.11.7",
+    "redis>=6.4.0",
 ]
 
 [project.scripts]
@@ -106,6 +108,15 @@ ignore = [
     "FBT001", # Boolean positional arg (OK for internal APIs)
     "FBT002", # Boolean default value (OK for internal APIs)
     "RET504", # Unnecessary assignment (sometimes improves readability)
+    "T201",   # Print allowed (needed for CLI output)
+    "TRY003", # Long exception messages (OK for internal errors)
+    "EM101",  # String literals in exceptions (OK for simple cases)
+    "EM102",  # F-string literals in exceptions (OK for simple cases)
+    "BLE001", # Catching Exception (needed for worker robustness)
+    "ARG002", # Unused function argument (needed for signal handlers)
+    "TRY301", # Abstract raise (OK for simple validation)
+    "ERA001", # Commented code (sometimes useful for clarity)
+    "TC001",  # Type-checking blocks (not always necessary)
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -131,3 +142,4 @@ check_untyped_defs = true
 show_error_codes = true
 namespace_packages = true
 explicit_package_bases = true
+mypy_path = "src"
