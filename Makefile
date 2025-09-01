@@ -5,6 +5,6 @@ install: ## Install all dependencies
 
 .PHONY: lint
 lint: ## Run linting and fix issues
-	uv run --dev ruff check --fix src
-	uv run --dev ruff format src
-	uv run --dev mypy src
+	uv run --dev ruff check --fix src tests
+	uv run --dev ruff format src tests
+	uv run --dev mypy src tests
