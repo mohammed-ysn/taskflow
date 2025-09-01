@@ -90,7 +90,7 @@ def task(
         )
 
         # Register task globally
-        _task_registry[task_name] = task_obj
+        register_task(task_obj)
 
         # Preserve function attributes
         functools.update_wrapper(task_obj, func)
@@ -98,6 +98,14 @@ def task(
         return task_obj
 
     return decorator
+
+
+def register_task(task_obj: Task) -> None:
+    """Register a task object."""
+    if task_obj.name in _task_registry:
+        msg = f"Task '{task_obj.name}' is already registered"
+        raise ValueError(msg)
+    _task_registry[task_obj.name] = task_obj
 
 
 def get_task(name: str) -> Task | None:
