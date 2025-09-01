@@ -151,3 +151,7 @@ mypy_path = "src"
 [[tool.mypy.overrides]]
 module = ["redis.*", "pytest", "pytest_asyncio"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_decorators = false

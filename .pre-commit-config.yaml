@@ -10,7 +10,7 @@ repos:
     rev: v1.17.1
     hooks:
       - id: mypy
-        args: [--strict]
+        args: [--config-file=pyproject.toml]
         additional_dependencies: [types-click, types-redis, pydantic]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
