@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import asyncio
 
-# Import tasks to register them
-from examples import tasks  # noqa: F401
 from taskflow.worker.executor import run_worker
 
 
