@@ -1,5 +1,8 @@
 version: "3"
 
+vars:
+  LINT_DIRS: src tests examples
+
 tasks:
   default:
     desc: List available tasks
@@ -8,45 +11,101 @@ tasks:
     silent: true
 
   install:
-    desc: Install all dependencies and set up development environment
+    desc: Install deps and configure pre-commit hooks
     cmds:
       - uv sync --all-groups
       - uv run --dev pre-commit install
 
-  lint:
-    desc: Run linting and fix issues
+  # ---- Code quality ----
+
+  format:
+    desc: Format code with ruff
     cmds:
-      - uv run --dev ruff format src tests examples
-      - uv run --dev ruff check --fix src tests examples
+      - uv run --dev ruff format {{.LINT_DIRS}}
+
+  lint:
+    desc: Format, lint (auto-fix), and type-check
+    cmds:
+      - uv run --dev ruff format {{.LINT_DIRS}}
+      - uv run --dev ruff check --fix {{.LINT_DIRS}}
       - uv run --dev ty check src
 
-  test:
-    desc: Run all tests
+  typecheck:
+    desc: Type-check with ty
     cmds:
-      - uv run --dev pytest tests/ -v
+      - uv run --dev ty check src
 
-  redis-up:
-    desc: Start Redis using Docker Compose
+  check:
+    desc: Lint and type-check without modifying files (CI mode)
+    cmds:
+      - uv run --dev ruff check {{.LINT_DIRS}}
+      - uv run --dev ty check src
+
+  # ---- Tests ----
+
+  test:
+    desc: "Run all tests (extra args: task test -- -k test_name -x)"
+    cmds:
+      - uv run --dev pytest tests/ -v {{.CLI_ARGS}}
+
+  test:unit:
+    desc: "Run unit tests only (extra args: task test:unit -- -k test_name)"
+    cmds:
+      - uv run --dev pytest tests/unit/ -v {{.CLI_ARGS}}
+
+  test:perf:
+    desc: Run performance tests only
+    cmds:
+      - uv run --dev pytest tests/performance/ -v {{.CLI_ARGS}}
+
+  # ---- CI ----
+
+  ci:
+    desc: Full CI pipeline — check and test without auto-fixing
+    cmds:
+      - task: check
+      - task: test
+
+  # ---- Redis ----
+
+  redis:up:
+    desc: Start Redis via Docker Compose
     cmds:
       - docker-compose up -d
 
-  redis-down:
+  redis:down:
     desc: Stop Redis
     cmds:
       - docker-compose down
 
-  worker:
-    desc: Start a worker (requires Redis running)
+  redis:logs:
+    desc: Tail Redis logs
     cmds:
-      - uv run taskflow worker --queues default --concurrency 5
+      - docker-compose logs -f redis
+
+  # ---- Run ----
+
+  worker:
+    desc: "Start worker (extra flags: task worker -- -q high -q default -c 10)"
+    cmds:
+      - uv run taskflow worker -q default -c 5 {{.CLI_ARGS}}
 
   example:
-    desc: Run example tasks (requires Redis and worker running)
+    desc: Submit example tasks (requires Redis + worker running)
     cmds:
-      - uv run python -m examples.submit_tasks
+      - uv run python examples/simple_example.py submit {{.CLI_ARGS}}
+
+  # ---- Dev ----
 
   dev:
-    desc: Quick start for development (install + start Redis)
-    deps: [install, redis-up]
+    desc: Install deps and start Redis
+    deps: [install, redis:up]
     cmds:
-      - echo "Development environment ready! Run 'task worker' in one terminal and 'task example' in another to test"
+      - echo "Ready — run 'task worker' and 'task example' in separate terminals"
+
+  clean:
+    desc: Remove build artefacts and caches
+    cmds:
+      - find . -type d \( -name __pycache__ -o -name .pytest_cache -o -name .ruff_cache \) -exec rm -rf {} + 2>/dev/null || true
+      - find . -name "*.pyc" -delete 2>/dev/null || true
+    silent: true
