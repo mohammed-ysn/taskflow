@@ -1,0 +1,52 @@
+version: "3"
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  install:
+    desc: Install all dependencies and set up development environment
+    cmds:
+      - uv sync --all-groups
+      - uv run --dev pre-commit install
+
+  lint:
+    desc: Run linting and fix issues
+    cmds:
+      - uv run --dev ruff format src tests examples
+      - uv run --dev ruff check --fix src tests examples
+      - uv run --dev ty check src
+
+  test:
+    desc: Run all tests
+    cmds:
+      - uv run --dev pytest tests/ -v
+
+  redis-up:
+    desc: Start Redis using Docker Compose
+    cmds:
+      - docker-compose up -d
+
+  redis-down:
+    desc: Stop Redis
+    cmds:
+      - docker-compose down
+
+  worker:
+    desc: Start a worker (requires Redis running)
+    cmds:
+      - uv run taskflow worker --queues default --concurrency 5
+
+  example:
+    desc: Run example tasks (requires Redis and worker running)
+    cmds:
+      - uv run python -m examples.submit_tasks
+
+  dev:
+    desc: Quick start for development (install + start Redis)
+    deps: [install, redis-up]
+    cmds:
+      - echo "Development environment ready! Run 'task worker' in one terminal and 'task example' in another to test"
