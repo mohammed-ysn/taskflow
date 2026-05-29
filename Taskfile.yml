@@ -141,6 +141,11 @@ tasks:
     cmds:
       - uv run python examples/timeout.py submit {{.CLI_ARGS}}
 
+  example:dag:
+    desc: "DAG — data pipeline with fan-out, fan-in, and concurrency"
+    cmds:
+      - uv run python examples/dag_pipeline.py
+
   example:middleware:
     desc: "Middleware — demo rate limiter and circuit breaker"
     cmds:

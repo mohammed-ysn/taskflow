@@ -94,7 +94,7 @@ Independent branches run concurrently. Cycles raise `CyclicDependencyError`.
 
 ## Examples
 
-Self-contained examples in `examples/` cover priorities, retries, timeouts, middleware, and scheduling. Run `task --list` to see all available commands.
+Self-contained examples in `examples/` cover priorities, retries, timeouts, middleware, scheduling, and DAG execution. Run `task --list` to see all available commands.
 
 ## Development
 
