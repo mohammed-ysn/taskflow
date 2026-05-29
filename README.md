@@ -12,6 +12,7 @@ Async distributed task queue for Python, backed by Redis.
 - Rate limiting (sliding window, token bucket, leaky bucket)
 - Circuit breaker middleware
 - Delayed, periodic, and cron scheduling
+- DAG execution engine with concurrency and cycle detection
 - TLS and password auth for Redis
 
 ## Requirements
@@ -73,6 +74,23 @@ entries = await broker.get_dlq()
 for task_id, data in entries.items():
     print(task_id, data["name"], data["retries"])
 ```
+
+### Run a DAG
+
+```python
+from taskflow.dag import DAG
+
+dag = DAG("pipeline")
+fetch  = dag.task("fetch", fetch_data, kwargs={"url": "..."})
+clean  = dag.task("clean", clean_data).after(fetch)
+branch_a = dag.task("branch_a", process_a).after(clean)
+branch_b = dag.task("branch_b", process_b).after(clean)
+dag.task("merge", merge_results).after(branch_a, branch_b)
+
+results = asyncio.run(dag.run())
+```
+
+Independent branches run concurrently. Cycles raise `CyclicDependencyError`.
 
 ## Examples
 
