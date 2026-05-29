@@ -75,12 +75,16 @@ class RedisBroker(BaseBroker):
 
         _, task_json, _ = result
         if isinstance(task_json, bytes):
-            task_json_str: str = task_json.decode()
-        else:
+            task_json_str = task_json.decode()
+        elif isinstance(task_json, str):
             task_json_str = task_json
+        else:
+            raise TypeError(f"Unexpected type from Redis: {type(task_json)}")
         task_data: dict[str, Any] = json.loads(task_json_str)
         await client.hset(
-            f"taskflow:processing:{queue}", task_data["id"], task_json_str,
+            f"taskflow:processing:{queue}",
+            task_data["id"],
+            task_json_str,
         )
         return task_data
 

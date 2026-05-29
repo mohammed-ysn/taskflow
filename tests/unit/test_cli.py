@@ -17,7 +17,9 @@ def test_worker_imports_modules_before_starting() -> None:
 
         with patch("asyncio.run"):
             runner = CliRunner()
-            result = runner.invoke(cli, ["worker", "--import", "examples.simple_example"])
+            result = runner.invoke(
+                cli, ["worker", "--import", "examples.simple_example"],
+            )
 
     assert result.exit_code == 0, result.output
     assert "add" in task_module._task_registry
