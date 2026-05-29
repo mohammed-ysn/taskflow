@@ -49,7 +49,7 @@ class RedisBroker(BaseBroker):
     async def disconnect(self) -> None:
         """Close connection to Redis."""
         if self._client:
-            await self._client.close()
+            await self._client.aclose()
             self._client = None
 
     async def send_task(
