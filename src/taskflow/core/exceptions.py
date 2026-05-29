@@ -13,7 +13,6 @@ class TaskRetryError(TaskFlowError):
         message: str,
         original_exception: Exception | None = None,
     ) -> None:
-        """Initialise TaskRetryError."""
         super().__init__(message)
         self.original_exception = original_exception
 

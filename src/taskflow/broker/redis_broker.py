@@ -1,4 +1,4 @@
-"""Redis broker implementation for task queue."""
+"""Redis broker implementation."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from taskflow.broker.base import BaseBroker
 
 
 class RedisBroker(BaseBroker):
-    """Redis implementation of the message broker."""
+    """Redis-backed message broker using sorted sets for priority queuing."""
 
     def __init__(
         self,
@@ -21,33 +21,27 @@ class RedisBroker(BaseBroker):
         db: int = 0,
         decode_responses: bool = False,
     ) -> None:
-        """Initialise Redis broker.
-
-        Args:
-            host: Redis host
-            port: Redis port
-            db: Redis database number
-            decode_responses: Whether to decode responses to strings
-        """
         self.host = host
         self.port = port
         self.db = db
         self.decode_responses = decode_responses
         self._client: redis.Redis[bytes] | None = None
 
+    def _ensure_connected(self) -> redis.Redis[bytes]:
+        if not self._client:
+            raise RuntimeError("Broker not connected")
+        return self._client
+
     async def connect(self) -> None:
-        """Establish connection to Redis."""
         self._client = redis.Redis(  # type: ignore[call-overload]
             host=self.host,
             port=self.port,
             db=self.db,
             decode_responses=self.decode_responses,
         )
-        # Test connection
         await self._client.ping()
 
     async def disconnect(self) -> None:
-        """Close connection to Redis."""
         if self._client:
             await self._client.aclose()
             self._client = None
@@ -61,14 +55,7 @@ class RedisBroker(BaseBroker):
         queue: str = "default",
         priority: int = 5,
     ) -> None:
-        """Send task to Redis queue.
-
-        Uses Redis sorted sets for priority queue implementation.
-        Lower scores (priority) are processed first.
-        """
-        if not self._client:
-            raise RuntimeError("Broker not connected")
-
+        client = self._ensure_connected()
         task_data = {
             "id": task_id or str(uuid.uuid4()),
             "name": task_name,
@@ -77,92 +64,51 @@ class RedisBroker(BaseBroker):
             "queue": queue,
             "priority": priority,
         }
-
-        # Serialise task data
-        task_json = json.dumps(task_data)
-
-        # Use sorted set for priority queue (lower score = higher priority)
-        queue_key = f"taskflow:queue:{queue}"
-        score = 10 - priority  # Invert priority for Redis sorted set
-
-        await self._client.zadd(queue_key, {task_json: score})
+        score = 10 - priority  # lower score = higher priority in BZPOPMIN
+        await client.zadd(f"taskflow:queue:{queue}", {json.dumps(task_data): score})
 
     async def receive_task(self, queue: str = "default") -> dict[str, Any] | None:
-        """Receive task from Redis queue.
-
-        Uses BZPOPMIN for blocking pop from sorted set.
-        """
-        if not self._client:
-            raise RuntimeError("Broker not connected")
-
-        queue_key = f"taskflow:queue:{queue}"
-
-        # Blocking pop with 1 second timeout
-        result = await self._client.bzpopmin(queue_key, timeout=1)
-
+        client = self._ensure_connected()
+        result = await client.bzpopmin(f"taskflow:queue:{queue}", timeout=1)
         if result is None:
             return None
 
-        # result is (queue_key, task_json, score)
         _, task_json, _ = result
-
-        # Decode if needed
         if isinstance(task_json, bytes):
-            task_json_str = task_json.decode("utf-8")
+            task_json_str: str = task_json.decode()
         else:
             task_json_str = task_json
-
         task_data: dict[str, Any] = json.loads(task_json_str)
-
-        # Store task in processing set
-        processing_key = f"taskflow:processing:{queue}"
-        await self._client.hset(processing_key, task_data["id"], task_json_str)
-
+        await client.hset(
+            f"taskflow:processing:{queue}", task_data["id"], task_json_str,
+        )
         return task_data
 
     async def ack_task(self, task_id: str) -> None:
-        """Acknowledge task completion."""
-        if not self._client:
-            raise RuntimeError("Broker not connected")
-
-        # Remove from all processing sets
-        keys = await self._client.keys("taskflow:processing:*")
-        for key in keys:
-            await self._client.hdel(key, task_id)
+        client = self._ensure_connected()
+        for key in await client.keys("taskflow:processing:*"):
+            await client.hdel(key, task_id)
 
     async def nack_task(self, task_id: str, *, requeue: bool = True) -> None:
-        """Negative acknowledge task (failed).
+        client = self._ensure_connected()
+        for key in await client.keys("taskflow:processing:*"):
+            task_json = await client.hget(key, task_id)
+            if not task_json:
+                continue
 
-        Args:
-            task_id: Task identifier to nack
-            requeue: Whether to requeue the task
-        """
-        if not self._client:
-            raise RuntimeError("Broker not connected")
+            key_str = key.decode() if isinstance(key, bytes) else key
+            queue = key_str.split(":")[-1]
+            task_data = json.loads(task_json)
+            await client.hdel(key, task_id)
 
-        # Find task in processing sets
-        keys = await self._client.keys("taskflow:processing:*")
-        task_data = None
-        queue = None
-
-        for key in keys:
-            task_json = await self._client.hget(key, task_id)
-            if task_json:
-                # Extract queue name from key
-                key_str = key.decode("utf-8") if isinstance(key, bytes) else key
-                queue = key_str.split(":")[-1]
-                task_data = json.loads(task_json)
-                await self._client.hdel(key, task_id)
-                break
-
-        if task_data and requeue and queue:
-            # Requeue with lower priority
-            task_data["priority"] = max(0, task_data.get("priority", 5) - 1)
-            await self.send_task(
-                task_name=task_data["name"],
-                task_id=task_data["id"],
-                args=task_data["args"],
-                kwargs=task_data["kwargs"],
-                queue=queue,
-                priority=task_data["priority"],
-            )
+            if requeue:
+                task_data["priority"] = max(0, task_data.get("priority", 5) - 1)
+                await self.send_task(
+                    task_name=task_data["name"],
+                    task_id=task_data["id"],
+                    args=task_data["args"],
+                    kwargs=task_data["kwargs"],
+                    queue=queue,
+                    priority=task_data["priority"],
+                )
+            break

@@ -15,8 +15,6 @@ from taskflow.core.exceptions import SchedulingError
 
 
 class ScheduleType(Enum):
-    """Types of scheduled tasks."""
-
     DELAYED = "delayed"
     PERIODIC = "periodic"
     CRON = "cron"
@@ -24,8 +22,6 @@ class ScheduleType(Enum):
 
 @dataclass
 class ScheduledTask:
-    """Represents a scheduled task."""
-
     task_id: str
     task_name: str
     schedule_type: ScheduleType
@@ -38,7 +34,6 @@ class ScheduledTask:
     misfire_grace_time: int = 30
 
     def __post_init__(self) -> None:
-        """Validate scheduled task configuration."""
         if self.schedule_type == ScheduleType.DELAYED and not self.trigger_time:
             raise SchedulingError("Delayed tasks require trigger_time")
         if self.schedule_type == ScheduleType.CRON and not self.cron_expression:
@@ -48,23 +43,18 @@ class ScheduledTask:
 
 
 class TaskScheduler:
-    """Manages scheduled task execution."""
-
     def __init__(self) -> None:
-        """Initialise the task scheduler."""
         self.scheduler = AsyncIOScheduler()
         self._scheduled_tasks: dict[str, ScheduledTask] = {}
         self._task_executors: dict[str, Any] = {}
         self._started = False
 
     async def start(self) -> None:
-        """Start the scheduler."""
         if not self._started:
             self.scheduler.start()
             self._started = True
 
     async def shutdown(self) -> None:
-        """Shutdown the scheduler."""
         if self._started:
             self.scheduler.shutdown(wait=True)
             self._started = False
@@ -78,9 +68,7 @@ class TaskScheduler:
         args: tuple[Any, ...] = (),
         kwargs: dict[str, Any] | None = None,
     ) -> ScheduledTask:
-        """Schedule a task to run after a delay."""
         trigger_time = datetime.now(UTC) + timedelta(seconds=delay_seconds)
-
         scheduled_task = ScheduledTask(
             task_id=task_id,
             task_name=task_name,
@@ -89,11 +77,7 @@ class TaskScheduler:
             args=args,
             kwargs=kwargs or {},
         )
-
-        # Store the task executor
         self._task_executors[task_id] = task_executor
-
-        # Add job to scheduler
         self.scheduler.add_job(
             func=self._execute_task,
             trigger=DateTrigger(run_date=trigger_time),
@@ -102,7 +86,6 @@ class TaskScheduler:
             name=task_name,
             misfire_grace_time=scheduled_task.misfire_grace_time,
         )
-
         self._scheduled_tasks[task_id] = scheduled_task
         return scheduled_task
 
@@ -116,7 +99,6 @@ class TaskScheduler:
         kwargs: dict[str, Any] | None = None,
         start_immediately: bool = False,
     ) -> ScheduledTask:
-        """Schedule a task to run periodically."""
         scheduled_task = ScheduledTask(
             task_id=task_id,
             task_name=task_name,
@@ -125,14 +107,8 @@ class TaskScheduler:
             args=args,
             kwargs=kwargs or {},
         )
-
-        # Store the task executor
         self._task_executors[task_id] = task_executor
-
-        # Calculate start date
         start_date = None if start_immediately else datetime.now(UTC)
-
-        # Add job to scheduler
         self.scheduler.add_job(
             func=self._execute_task,
             trigger=IntervalTrigger(seconds=interval_seconds, start_date=start_date),
@@ -142,7 +118,6 @@ class TaskScheduler:
             max_instances=scheduled_task.max_instances,
             misfire_grace_time=scheduled_task.misfire_grace_time,
         )
-
         self._scheduled_tasks[task_id] = scheduled_task
         return scheduled_task
 
@@ -155,7 +130,12 @@ class TaskScheduler:
         args: tuple[Any, ...] = (),
         kwargs: dict[str, Any] | None = None,
     ) -> ScheduledTask:
-        """Schedule a task using cron expression."""
+        _CRON_PARTS = 5  # noqa: N806
+        if len(cron_expression.split()) != _CRON_PARTS:
+            raise SchedulingError(
+                f"Invalid cron expression: {cron_expression}. "
+                "Expected format: 'minute hour day month day_of_week'",
+            )
         scheduled_task = ScheduledTask(
             task_id=task_id,
             task_name=task_name,
@@ -164,20 +144,7 @@ class TaskScheduler:
             args=args,
             kwargs=kwargs or {},
         )
-
-        # Store the task executor
         self._task_executors[task_id] = task_executor
-
-        # Parse cron expression
-        cron_parts = cron_expression.split()
-        expected_cron_parts = 5
-        if len(cron_parts) != expected_cron_parts:
-            raise SchedulingError(
-                f"Invalid cron expression: {cron_expression}. "
-                "Expected format: 'minute hour day month day_of_week'",
-            )
-
-        # Add job to scheduler
         self.scheduler.add_job(
             func=self._execute_task,
             trigger=CronTrigger.from_crontab(cron_expression),
@@ -187,77 +154,63 @@ class TaskScheduler:
             max_instances=scheduled_task.max_instances,
             misfire_grace_time=scheduled_task.misfire_grace_time,
         )
-
         self._scheduled_tasks[task_id] = scheduled_task
         return scheduled_task
 
     async def _execute_task(self, task_id: str) -> Any:
-        """Execute a scheduled task."""
         if task_id not in self._scheduled_tasks:
             raise SchedulingError(f"Task {task_id} not found")
 
         task = self._scheduled_tasks[task_id]
         executor = self._task_executors.get(task_id)
-
         if not executor:
             raise SchedulingError(f"No executor found for task {task_id}")
 
-        # Execute the task
         if asyncio.iscoroutinefunction(executor):
             result = await executor(*task.args, **task.kwargs)
         else:
             result = executor(*task.args, **task.kwargs)
 
-        # Remove one-time tasks
         if task.schedule_type == ScheduleType.DELAYED:
             self.cancel_task(task_id)
 
         return result
 
     def cancel_task(self, task_id: str) -> bool:
-        """Cancel a scheduled task."""
         if task_id in self._scheduled_tasks:
             self.scheduler.remove_job(task_id)
             del self._scheduled_tasks[task_id]
-            if task_id in self._task_executors:
-                del self._task_executors[task_id]
+            self._task_executors.pop(task_id, None)
             return True
         return False
 
     def get_scheduled_task(self, task_id: str) -> ScheduledTask | None:
-        """Get a scheduled task by ID."""
         return self._scheduled_tasks.get(task_id)
 
     def list_scheduled_tasks(self) -> list[ScheduledTask]:
-        """List all scheduled tasks."""
         return list(self._scheduled_tasks.values())
 
     def pause_task(self, task_id: str) -> bool:
-        """Pause a scheduled task."""
         if task_id in self._scheduled_tasks:
             self.scheduler.pause_job(task_id)
             return True
         return False
 
     def resume_task(self, task_id: str) -> bool:
-        """Resume a paused task."""
         if task_id in self._scheduled_tasks:
             self.scheduler.resume_job(task_id)
             return True
         return False
 
     def get_next_run_time(self, task_id: str) -> datetime | None:
-        """Get next run time for a task."""
         job = self.scheduler.get_job(task_id)
         return job.next_run_time if job else None
 
 
-# Decorator for periodic tasks
 def periodic_task(cron: str | None = None, interval: float | None = None) -> Any:
-    """Decorator for periodic task execution."""
+    """Mark a function for periodic execution."""
 
     def decorator(func: Any) -> Any:
-        """Wrap the function for periodic execution."""
         func._is_periodic = True  # noqa: SLF001
         func._cron_expression = cron  # noqa: SLF001
         func._interval_seconds = interval  # noqa: SLF001
@@ -266,12 +219,10 @@ def periodic_task(cron: str | None = None, interval: float | None = None) -> Any
     return decorator
 
 
-# Helper function for delayed task execution
 def schedule_task(delay: float) -> Any:
-    """Decorator for delayed task execution."""
+    """Mark a function for delayed execution."""
 
     def decorator(func: Any) -> Any:
-        """Wrap the function for delayed execution."""
         func._is_scheduled = True  # noqa: SLF001
         func._delay_seconds = delay  # noqa: SLF001
         return func
