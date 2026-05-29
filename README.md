@@ -5,38 +5,33 @@ A modern distributed task queue for Python, built with asyncio and Redis.
 ## Features
 
 - Async-first design with asyncio
-- Priority queues with Redis sorted sets
-- Automatic task retry on failure
+- Priority queues via Redis sorted sets
+- Automatic retry on failure with configurable backoff
 - Concurrent task processing
-- Simple decorator-based API
+- Decorator-based task registration
+- Rate limiting and circuit breaker middleware
+- Delayed and periodic task scheduling
+
+## Requirements
+
+- Python 3.12+
+- Redis
 
 ## Quick Start
 
-### Prerequisites
-
-- Python 3.12+
-- Redis (via Docker or local installation)
-
-### Installation
-
 ```bash
-# Clone the repository
 git clone https://github.com/mohammed-ysn/taskflow.git
 cd taskflow
-
-# Install with UV
-uv pip install -e .
+uv sync
 ```
 
-### Running Redis
+Start Redis:
 
 ```bash
-docker-compose up -d
+task redis:up
 ```
 
-### Basic Usage
-
-1. Define tasks:
+### Define tasks
 
 ```python
 from taskflow.core.task import task
@@ -46,7 +41,7 @@ def add(x: int, y: int) -> int:
     return x + y
 ```
 
-2. Submit tasks:
+### Submit tasks
 
 ```python
 from taskflow.broker.redis_broker import RedisBroker
@@ -56,7 +51,7 @@ await broker.connect()
 await broker.send_task("add", task_id="task-1", args=(5, 3), kwargs={})
 ```
 
-3. Start a worker:
+### Run a worker
 
 ```bash
 uv run taskflow worker --queues default --concurrency 5
@@ -64,28 +59,19 @@ uv run taskflow worker --queues default --concurrency 5
 
 ### Example
 
-Run the included example:
-
 ```bash
-# Start Redis
-docker-compose up -d
+# Terminal 1
+task worker
 
-# Submit example tasks
-uv run python -m examples.submit_tasks
-
-# In another terminal, start worker
-uv run python -m examples.worker_with_tasks
+# Terminal 2
+task example
 ```
 
 ## Development
 
 ```bash
-# Install dev dependencies
-uv pip install -e ".[dev]"
-
-# Run linting
-make lint
-
-# Install pre-commit hooks
-pre-commit install
+uv sync --all-groups  # install all deps (editable)
+task lint             # format + lint + type-check
+task test             # run all tests
+task ci               # lint + test (no auto-fix, mirrors CI)
 ```
