@@ -13,13 +13,15 @@ from taskflow.core.task import Task, TaskConfig
 from taskflow.worker.executor import Worker
 
 
-def _make_worker() -> tuple[Worker, AsyncMock, AsyncMock]:
+def _make_worker() -> tuple[Worker, AsyncMock, AsyncMock, AsyncMock]:
     ack_task = AsyncMock()
     nack_task = AsyncMock()
+    dead_letter = AsyncMock()
     broker = MagicMock(spec=BaseBroker)
     broker.ack_task = ack_task
     broker.nack_task = nack_task
-    return Worker(broker=broker), ack_task, nack_task
+    broker.dead_letter = dead_letter
+    return Worker(broker=broker), ack_task, nack_task, dead_letter
 
 
 def _make_task(max_retries: int = 3) -> MagicMock:
@@ -42,7 +44,7 @@ def _task_data(name: str = "my_task", retries: int = 0) -> dict[str, Any]:
 
 @pytest.mark.asyncio
 async def test_successful_task_is_acked() -> None:
-    worker, ack_task, nack_task = _make_worker()
+    worker, ack_task, nack_task, _dl = _make_worker()
 
     with patch("taskflow.worker.executor.get_task", return_value=_make_task()):
         await worker._process_task(_task_data())
@@ -53,7 +55,7 @@ async def test_successful_task_is_acked() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_task_requeued_when_retries_remaining() -> None:
-    worker, ack_task, nack_task = _make_worker()
+    worker, ack_task, nack_task, _dl = _make_worker()
     task = _make_task(max_retries=3)
     task.func = AsyncMock(side_effect=ValueError("boom"))
 
@@ -66,20 +68,21 @@ async def test_failed_task_requeued_when_retries_remaining() -> None:
 
 @pytest.mark.asyncio
 async def test_failed_task_dropped_when_retries_exhausted() -> None:
-    worker, ack_task, nack_task = _make_worker()
+    worker, ack_task, nack_task, dead_letter = _make_worker()
     task = _make_task(max_retries=3)
     task.func = AsyncMock(side_effect=ValueError("boom"))
 
     with patch("taskflow.worker.executor.get_task", return_value=task):
         await worker._process_task(_task_data(retries=3))
 
+    dead_letter.assert_awaited_once()
     ack_task.assert_awaited_once_with("test-id")
     nack_task.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_sync_task_runs_in_executor() -> None:
-    worker, ack_task, _ = _make_worker()
+    worker, ack_task, _, _dl = _make_worker()
     task = _make_task()
     task.func = MagicMock(return_value="sync_result")  # sync, not AsyncMock
 
@@ -92,7 +95,7 @@ async def test_sync_task_runs_in_executor() -> None:
 
 @pytest.mark.asyncio
 async def test_task_timeout_counts_as_failure() -> None:
-    worker, ack_task, nack_task = _make_worker()
+    worker, ack_task, nack_task, _dl = _make_worker()
     task = _make_task(max_retries=3)
     task.config.timeout = 0.01
     task.func = AsyncMock(side_effect=asyncio.TimeoutError)
@@ -106,7 +109,7 @@ async def test_task_timeout_counts_as_failure() -> None:
 
 @pytest.mark.asyncio
 async def test_unknown_task_is_dropped_not_requeued() -> None:
-    worker, ack_task, nack_task = _make_worker()
+    worker, ack_task, nack_task, _dl = _make_worker()
 
     with patch("taskflow.worker.executor.get_task", return_value=None):
         await worker._process_task(_task_data(name="ghost_task"))

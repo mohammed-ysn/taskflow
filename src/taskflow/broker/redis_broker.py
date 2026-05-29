@@ -120,3 +120,7 @@ class RedisBroker(BaseBroker):
                     retries=task_data["retries"],
                 )
             break
+
+    async def dead_letter(self, task_id: str, task_data: dict[str, Any]) -> None:
+        client = self._ensure_connected()
+        await client.hset("taskflow:dlq", task_id, json.dumps(task_data))

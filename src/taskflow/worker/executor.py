@@ -107,8 +107,11 @@ class Worker:
             max_retries = task.config.max_retries if task else 0
             if retries >= max_retries:
                 logger.exception(
-                    "Task %s failed after %d retries - dropping", task_id, retries,
+                    "Task %s exhausted %d retries - sending to DLQ",
+                    task_id,
+                    retries,
                 )
+                await self.broker.dead_letter(task_id, task_data)
                 await self.broker.ack_task(task_id)
             else:
                 logger.exception(

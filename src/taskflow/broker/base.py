@@ -35,3 +35,6 @@ class BaseBroker(ABC):
 
     @abstractmethod
     async def nack_task(self, task_id: str, *, requeue: bool = True) -> None: ...
+
+    @abstractmethod
+    async def dead_letter(self, task_id: str, task_data: dict[str, Any]) -> None: ...
