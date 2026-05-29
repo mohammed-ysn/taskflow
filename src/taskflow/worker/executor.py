@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import signal
 from typing import Any
@@ -90,7 +91,7 @@ class Worker:
                 await self.broker.ack_task(task_id)
                 return
 
-            if asyncio.iscoroutinefunction(task.func):
+            if inspect.iscoroutinefunction(task.func):
                 coro = task.func(*args, **kwargs)
             else:
                 loop = asyncio.get_running_loop()
