@@ -86,7 +86,9 @@ class Worker:
         try:
             task = get_task(task_name)
             if not task:
-                raise ValueError(f"Unknown task: {task_name}")
+                logger.error("Unknown task %s - dropping", task_name)
+                await self.broker.ack_task(task_id)
+                return
 
             if asyncio.iscoroutinefunction(task.func):
                 result = await task.func(*args, **kwargs)
@@ -97,8 +99,21 @@ class Worker:
             logger.info("Task %s completed: %s", task_id, result)
 
         except Exception:
-            logger.exception("Task %s failed", task_id)
-            await self.broker.nack_task(task_id, requeue=True)
+            retries = task_data.get("retries", 0)
+            max_retries = task.config.max_retries if task else 0
+            if retries >= max_retries:
+                logger.exception(
+                    "Task %s failed after %d retries - dropping", task_id, retries,
+                )
+                await self.broker.ack_task(task_id)
+            else:
+                logger.exception(
+                    "Task %s failed (attempt %d/%d) - requeueing",
+                    task_id,
+                    retries + 1,
+                    max_retries,
+                )
+                await self.broker.nack_task(task_id, requeue=True)
 
 
 async def run_worker(

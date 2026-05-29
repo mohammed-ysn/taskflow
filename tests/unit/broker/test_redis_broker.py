@@ -45,6 +45,7 @@ async def test_send_and_receive_task(redis_broker: RedisBroker) -> None:
     assert task_data["kwargs"] == {"key": "value"}
     assert task_data["queue"] == "test_queue"
     assert task_data["priority"] == 7
+    assert task_data["retries"] == 0
 
 
 @pytest.mark.asyncio
@@ -148,7 +149,8 @@ async def test_nack_task_with_requeue(redis_broker: RedisBroker) -> None:
     requeued_task = await redis_broker.receive_task(queue="nack_queue")
     assert requeued_task is not None
     assert requeued_task["id"] == task_id
-    assert requeued_task["priority"] == 4  # Priority decreased
+    assert requeued_task["priority"] == 4
+    assert requeued_task["retries"] == 1
 
 
 @pytest.mark.asyncio

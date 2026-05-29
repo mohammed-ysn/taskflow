@@ -24,6 +24,7 @@ class BaseBroker(ABC):
         kwargs: dict[str, Any],
         queue: str = "default",
         priority: int = 5,
+        retries: int = 0,
     ) -> None: ...
 
     @abstractmethod

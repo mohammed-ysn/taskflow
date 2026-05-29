@@ -54,6 +54,7 @@ class RedisBroker(BaseBroker):
         kwargs: dict[str, Any],
         queue: str = "default",
         priority: int = 5,
+        retries: int = 0,
     ) -> None:
         client = self._ensure_connected()
         task_data = {
@@ -63,6 +64,7 @@ class RedisBroker(BaseBroker):
             "kwargs": kwargs,
             "queue": queue,
             "priority": priority,
+            "retries": retries,
         }
         score = 10 - priority  # lower score = higher priority in BZPOPMIN
         await client.zadd(f"taskflow:queue:{queue}", {json.dumps(task_data): score})
@@ -107,6 +109,7 @@ class RedisBroker(BaseBroker):
 
             if requeue:
                 task_data["priority"] = max(0, task_data.get("priority", 5) - 1)
+                task_data["retries"] = task_data.get("retries", 0) + 1
                 await self.send_task(
                     task_name=task_data["name"],
                     task_id=task_data["id"],
@@ -114,5 +117,6 @@ class RedisBroker(BaseBroker):
                     kwargs=task_data["kwargs"],
                     queue=queue,
                     priority=task_data["priority"],
+                    retries=task_data["retries"],
                 )
             break
