@@ -33,13 +33,13 @@ async def enrich_a(data: list[int]) -> list[int]:
 async def enrich_b(data: list[int]) -> list[int]:
     logger.info("Enriching branch B (squares)")
     await asyncio.sleep(0.2)
-    return [x ** 2 for x in data]
+    return [x**2 for x in data]
 
 
 async def enrich_c(data: list[int]) -> list[int]:
     logger.info("Enriching branch C (cubes)")
     await asyncio.sleep(0.2)
-    return [x ** 3 for x in data]
+    return [x**3 for x in data]
 
 
 def report(label: str) -> str:
@@ -54,8 +54,8 @@ def run() -> None:
     dag = DAG("data-pipeline")
 
     ingest_node = dag.task("ingest", ingest, kwargs={"source": "s3://bucket/data"})
-    validate_node = (
-        dag.task("validate", validate, kwargs={"data": [1, 2, 3]}).after(ingest_node)
+    validate_node = dag.task("validate", validate, kwargs={"data": [1, 2, 3]}).after(
+        ingest_node,
     )
 
     # Fan-out: three enrichment branches run concurrently
