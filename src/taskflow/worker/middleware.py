@@ -150,29 +150,3 @@ class CircuitBreaker:
         else:
             await self._handle_success()
             return result
-
-
-class CircuitBreakerManager:
-    def __init__(self) -> None:
-        self._breakers: dict[str, CircuitBreaker] = {}
-        self._lock = asyncio.Lock()
-
-    async def get_or_create(
-        self,
-        name: str,
-        config: CircuitBreakerConfig | None = None,
-    ) -> CircuitBreaker:
-        async with self._lock:
-            if name not in self._breakers:
-                self._breakers[name] = CircuitBreaker(name, config)
-            return self._breakers[name]
-
-    def get_state(self, name: str) -> CircuitBreakerState | None:
-        breaker = self._breakers.get(name)
-        return breaker.state if breaker else None
-
-    def get_all_states(self) -> dict[str, CircuitBreakerState]:
-        return {name: breaker.state for name, breaker in self._breakers.items()}
-
-
-circuit_breaker_manager = CircuitBreakerManager()

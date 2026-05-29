@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import functools
-import inspect
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, TypeVar
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -28,10 +27,6 @@ class Task:
     func: Callable[..., Any]
     config: TaskConfig
     module: str
-    signature: inspect.Signature = field(init=False)
-
-    def __post_init__(self) -> None:
-        self.signature = inspect.signature(self.func)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         return self.func(*args, **kwargs)

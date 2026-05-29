@@ -205,26 +205,3 @@ class TaskScheduler:
     def get_next_run_time(self, task_id: str) -> datetime | None:
         job = self.scheduler.get_job(task_id)
         return job.next_run_time if job else None
-
-
-def periodic_task(cron: str | None = None, interval: float | None = None) -> Any:
-    """Mark a function for periodic execution."""
-
-    def decorator(func: Any) -> Any:
-        func._is_periodic = True  # noqa: SLF001
-        func._cron_expression = cron  # noqa: SLF001
-        func._interval_seconds = interval  # noqa: SLF001
-        return func
-
-    return decorator
-
-
-def schedule_task(delay: float) -> Any:
-    """Mark a function for delayed execution."""
-
-    def decorator(func: Any) -> Any:
-        func._is_scheduled = True  # noqa: SLF001
-        func._delay_seconds = delay  # noqa: SLF001
-        return func
-
-    return decorator

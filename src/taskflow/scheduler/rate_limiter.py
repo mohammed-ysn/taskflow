@@ -167,6 +167,3 @@ class RateLimiterManager:
         if not limiter:
             return True
         return await limiter.is_allowed(key)
-
-
-rate_limiter_manager = RateLimiterManager()
