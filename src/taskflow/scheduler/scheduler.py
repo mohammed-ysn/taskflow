@@ -1,7 +1,7 @@
 """Task scheduler for delayed and periodic execution."""
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
@@ -33,15 +33,12 @@ class ScheduledTask:
     cron_expression: str | None = None
     interval_seconds: float | None = None
     args: tuple[Any, ...] = ()
-    kwargs: dict[str, Any] | None = None
+    kwargs: dict[str, Any] = field(default_factory=dict)
     max_instances: int = 1
     misfire_grace_time: int = 30
 
     def __post_init__(self) -> None:
         """Validate scheduled task configuration."""
-        if self.kwargs is None:
-            self.kwargs = {}
-
         if self.schedule_type == ScheduleType.DELAYED and not self.trigger_time:
             raise SchedulingError("Delayed tasks require trigger_time")
         if self.schedule_type == ScheduleType.CRON and not self.cron_expression:

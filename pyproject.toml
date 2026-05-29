@@ -23,13 +23,11 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "mypy>=1.17.1",
     "pre-commit>=4.3.0",
     "pytest>=8.4.1",
     "pytest-asyncio>=1.1.0",
     "ruff>=0.12.11",
-    "types-click>=7.1.8",
-    "types-redis>=4.6.0.20241004",
+    "ty>=0.0.40",
 ]
 
 [tool.ruff]
@@ -135,24 +133,5 @@ convention = "google"
 quote-style = "double"
 indent-style = "space"
 
-[tool.mypy]
-python_version = "3.12"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_any_unimported = false
-no_implicit_optional = true
-check_untyped_defs = true
-show_error_codes = true
-namespace_packages = true
-explicit_package_bases = true
-mypy_path = "src"
-
-[[tool.mypy.overrides]]
-module = ["redis.*", "pytest", "pytest_asyncio", "apscheduler.*"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "tests.*"
-disallow_untyped_decorators = false
+[tool.ty.environment]
+python-version = "3.12"

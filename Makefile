@@ -14,7 +14,7 @@ install: ## Install all dependencies and set up development environment
 lint: ## Run linting and fix issues
 	uv run --dev ruff format src tests examples
 	uv run --dev ruff check --fix src tests examples
-	uv run --dev mypy src tests
+	uv run --dev ty check src
 
 .PHONY: test
 test: ## Run all tests

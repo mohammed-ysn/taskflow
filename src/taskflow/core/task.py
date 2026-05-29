@@ -72,7 +72,9 @@ def task(
     """
 
     def decorator(func: F) -> Task:
-        task_name = name or f"{func.__module__}.{func.__name__}"
+        fn_module = getattr(func, "__module__", "")
+        fn_name = getattr(func, "__name__", "")
+        task_name = name or f"{fn_module}.{fn_name}"
 
         config = TaskConfig(
             max_retries=max_retries,
