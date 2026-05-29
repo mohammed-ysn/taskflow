@@ -128,8 +128,21 @@ async def run_worker(
     port: int = 6379,
     queues: list[str] | None = None,
     concurrency: int = 10,
+    password: str | None = None,
+    ssl: bool = False,
+    ssl_certfile: str | None = None,
+    ssl_keyfile: str | None = None,
+    ssl_ca_certs: str | None = None,
 ) -> None:
-    broker = RedisBroker(host=host, port=port)
+    broker = RedisBroker(
+        host=host,
+        port=port,
+        password=password,
+        ssl=ssl,
+        ssl_certfile=ssl_certfile,
+        ssl_keyfile=ssl_keyfile,
+        ssl_ca_certs=ssl_ca_certs,
+    )
     worker = Worker(broker=broker, queues=queues, concurrency=concurrency)
     await worker.start()
 

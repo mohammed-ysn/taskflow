@@ -19,12 +19,20 @@ class RedisBroker(BaseBroker):
         host: str = "localhost",
         port: int = 6379,
         db: int = 0,
-        decode_responses: bool = False,
+        password: str | None = None,
+        ssl: bool = False,
+        ssl_certfile: str | None = None,
+        ssl_keyfile: str | None = None,
+        ssl_ca_certs: str | None = None,
     ) -> None:
         self.host = host
         self.port = port
         self.db = db
-        self.decode_responses = decode_responses
+        self.password = password
+        self.ssl = ssl
+        self.ssl_certfile = ssl_certfile
+        self.ssl_keyfile = ssl_keyfile
+        self.ssl_ca_certs = ssl_ca_certs
         self._client: redis.Redis[bytes] | None = None
 
     def _ensure_connected(self) -> redis.Redis[bytes]:
@@ -37,7 +45,11 @@ class RedisBroker(BaseBroker):
             host=self.host,
             port=self.port,
             db=self.db,
-            decode_responses=self.decode_responses,
+            password=self.password,
+            ssl=self.ssl,
+            ssl_certfile=self.ssl_certfile,
+            ssl_keyfile=self.ssl_keyfile,
+            ssl_ca_certs=self.ssl_ca_certs,
         )
         await self._client.ping()
 
