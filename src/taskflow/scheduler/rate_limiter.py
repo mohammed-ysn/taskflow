@@ -120,9 +120,9 @@ class LeakyBucketRateLimiter(RateLimiter):
         async with self._lock:
             now = time.time()
             self._leak(key, now)
-            if self._buckets[key] >= self.config.max_requests:
+            if self._buckets[key] + 1 > self.config.max_requests:
                 wait_time = (
-                    self._buckets[key] - self.config.max_requests + 1
+                    self._buckets[key] + 1 - self.config.max_requests
                 ) / self.leak_rate
                 raise RateLimitError(
                     f"Rate limit exceeded. Try again in {wait_time:.2f} seconds",
@@ -133,7 +133,7 @@ class LeakyBucketRateLimiter(RateLimiter):
         key = key or "default"
         async with self._lock:
             self._leak(key, time.time())
-            return self._buckets[key] < self.config.max_requests
+            return self._buckets[key] + 1 <= self.config.max_requests
 
 
 class RateLimiterManager:

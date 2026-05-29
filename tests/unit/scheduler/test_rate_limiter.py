@@ -140,7 +140,6 @@ class TestTokenBucketRateLimiter:
 class TestLeakyBucketRateLimiter:
     """Test leaky bucket rate limiter."""
 
-    @pytest.mark.skip(reason="Leaky bucket implementation needs review")
     @pytest.mark.asyncio
     async def test_bucket_fills_and_leaks(self) -> None:
         """Test bucket fills with requests and leaks over time."""
