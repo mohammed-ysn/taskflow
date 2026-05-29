@@ -82,22 +82,74 @@ tasks:
     cmds:
       - docker-compose logs -f redis
 
-  # ---- Run ----
+  redis:flush:
+    desc: Flush all Redis keys (clears queues and DLQ)
+    cmds:
+      - docker exec taskflow-redis-1 redis-cli FLUSHDB
+
+  # ---- Worker ----
 
   worker:
     desc: "Start worker (extra flags: task worker -- -q high -q default -c 10)"
     cmds:
       - uv run taskflow worker -q default -c 5 {{.CLI_ARGS}}
 
-  example:worker:
-    desc: Run worker for examples
-    cmds:
-      - uv run python examples/simple_example.py worker {{.CLI_ARGS}}
+  # ---- Examples ----
 
-  example:submit:
-    desc: Submit example tasks (requires Redis + example:worker running)
+  example:basic:worker:
+    desc: "Basic example — run worker"
     cmds:
-      - uv run python examples/simple_example.py submit {{.CLI_ARGS}}
+      - uv run python examples/basic.py worker {{.CLI_ARGS}}
+
+  example:basic:submit:
+    desc: "Basic example — submit tasks"
+    cmds:
+      - uv run python examples/basic.py submit {{.CLI_ARGS}}
+
+  example:priorities:worker:
+    desc: "Priority queues — run worker (concurrency=1 shows ordering)"
+    cmds:
+      - uv run python examples/priorities.py worker --concurrency 1 {{.CLI_ARGS}}
+
+  example:priorities:submit:
+    desc: "Priority queues — submit tasks at different priorities"
+    cmds:
+      - uv run python examples/priorities.py submit {{.CLI_ARGS}}
+
+  example:retries:worker:
+    desc: "Retries + DLQ — run worker"
+    cmds:
+      - uv run python examples/retries.py worker {{.CLI_ARGS}}
+
+  example:retries:submit:
+    desc: "Retries + DLQ — submit flaky and always-failing tasks"
+    cmds:
+      - uv run python examples/retries.py submit {{.CLI_ARGS}}
+
+  example:retries:dlq:
+    desc: "Retries + DLQ — inspect dead letter queue"
+    cmds:
+      - uv run python examples/retries.py inspect-dlq {{.CLI_ARGS}}
+
+  example:timeout:worker:
+    desc: "Timeout — run worker"
+    cmds:
+      - uv run python examples/timeout.py worker {{.CLI_ARGS}}
+
+  example:timeout:submit:
+    desc: "Timeout — submit fast and slow (timing-out) tasks"
+    cmds:
+      - uv run python examples/timeout.py submit {{.CLI_ARGS}}
+
+  example:middleware:
+    desc: "Middleware — demo rate limiter and circuit breaker"
+    cmds:
+      - uv run python examples/middleware.py demo {{.CLI_ARGS}}
+
+  example:scheduling:
+    desc: "Scheduling — demo delayed, periodic, and cron tasks"
+    cmds:
+      - uv run python examples/scheduling.py demo {{.CLI_ARGS}}
 
   # ---- Dev ----
 
@@ -105,7 +157,7 @@ tasks:
     desc: Install deps and start Redis
     deps: [install, redis:up]
     cmds:
-      - echo "Ready — run 'task example:worker' and 'task example:submit' in separate terminals"
+      - echo "Ready — see 'task --list' for available examples"
 
   clean:
     desc: Remove build artefacts and caches

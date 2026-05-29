@@ -136,3 +136,11 @@ class RedisBroker(BaseBroker):
     async def dead_letter(self, task_id: str, task_data: dict[str, Any]) -> None:
         client = self._ensure_connected()
         await client.hset("taskflow:dlq", task_id, json.dumps(task_data))
+
+    async def get_dlq(self) -> dict[str, dict[str, Any]]:
+        client = self._ensure_connected()
+        entries = await client.hgetall("taskflow:dlq")
+        return {
+            (k.decode() if isinstance(k, bytes) else k): json.loads(v)
+            for k, v in entries.items()
+        }

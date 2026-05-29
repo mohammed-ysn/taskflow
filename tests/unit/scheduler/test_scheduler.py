@@ -266,9 +266,9 @@ class TestTaskScheduler:
 
     @pytest.mark.asyncio
     async def test_execute_nonexistent_task(self, scheduler: TaskScheduler) -> None:
-        """Test executing a task that doesn't exist raises error."""
-        with pytest.raises(SchedulingError, match="Task exec-404 not found"):
-            await scheduler._execute_task("exec-404")
+        """Test executing a cancelled/unknown task returns None silently."""
+        result = await scheduler._execute_task("exec-404")
+        assert result is None
 
     def test_pause_resume_task(self, scheduler: TaskScheduler) -> None:
         """Test pausing and resuming a task."""

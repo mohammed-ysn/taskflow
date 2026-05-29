@@ -38,3 +38,6 @@ class BaseBroker(ABC):
 
     @abstractmethod
     async def dead_letter(self, task_id: str, task_data: dict[str, Any]) -> None: ...
+
+    @abstractmethod
+    async def get_dlq(self) -> dict[str, dict[str, Any]]: ...

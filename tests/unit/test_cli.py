@@ -19,10 +19,10 @@ def test_worker_imports_modules_before_starting() -> None:
             runner = CliRunner()
             result = runner.invoke(
                 cli,
-                ["worker", "--import", "examples.simple_example"],
+                ["worker", "--import", "examples.basic"],
             )
 
     assert result.exit_code == 0, result.output
+    assert "greet" in task_module._task_registry
     assert "add" in task_module._task_registry
-    assert "multiply" in task_module._task_registry
-    assert "process_data" in task_module._task_registry
+    assert "slow_add" in task_module._task_registry

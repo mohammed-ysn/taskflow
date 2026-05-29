@@ -1,17 +1,22 @@
 """Task scheduler for delayed and periodic execution."""
 
 import asyncio
+import contextlib
+import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
+from apscheduler.jobstores.base import JobLookupError
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from taskflow.core.exceptions import SchedulingError
+
+logger = logging.getLogger(__name__)
 
 
 class ScheduleType(Enum):
@@ -159,7 +164,9 @@ class TaskScheduler:
 
     async def _execute_task(self, task_id: str) -> Any:
         if task_id not in self._scheduled_tasks:
-            raise SchedulingError(f"Task {task_id} not found")
+            # Task was cancelled between scheduling and execution — ignore
+            logger.debug("Skipping execution of cancelled task %s", task_id)
+            return None
 
         task = self._scheduled_tasks[task_id]
         executor = self._task_executors.get(task_id)
@@ -178,7 +185,8 @@ class TaskScheduler:
 
     def cancel_task(self, task_id: str) -> bool:
         if task_id in self._scheduled_tasks:
-            self.scheduler.remove_job(task_id)
+            with contextlib.suppress(JobLookupError):
+                self.scheduler.remove_job(task_id)
             del self._scheduled_tasks[task_id]
             self._task_executors.pop(task_id, None)
             return True
