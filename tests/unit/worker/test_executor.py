@@ -77,6 +77,19 @@ async def test_failed_task_dropped_when_retries_exhausted() -> None:
 
 
 @pytest.mark.asyncio
+async def test_sync_task_runs_in_executor() -> None:
+    worker, ack_task, _ = _make_worker()
+    task = _make_task()
+    task.func = MagicMock(return_value="sync_result")  # sync, not AsyncMock
+
+    with patch("taskflow.worker.executor.get_task", return_value=task):
+        await worker._process_task(_task_data())
+
+    task.func.assert_called_once_with()
+    ack_task.assert_awaited_once_with("test-id")
+
+
+@pytest.mark.asyncio
 async def test_unknown_task_is_dropped_not_requeued() -> None:
     worker, ack_task, nack_task = _make_worker()
 
