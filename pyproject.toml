@@ -134,3 +134,9 @@ indent-style = "space"
 
 [tool.ty.environment]
 python-version = "3.12"
+
+[tool.pyright]
+pythonVersion = "3.12"
+venvPath = "."
+venv = ".venv"
+extraPaths = ["src"]
