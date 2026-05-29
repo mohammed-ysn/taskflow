@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import signal
 from typing import Any
 
 from taskflow.broker.base import BaseBroker
 from taskflow.broker.redis_broker import RedisBroker
 from taskflow.core.task import get_task
+
+logger = logging.getLogger(__name__)
 
 
 class Worker:
@@ -27,8 +30,11 @@ class Worker:
         self._tasks: set[asyncio.Task[None]] = set()
 
     async def start(self) -> None:
-        print(f"Starting worker with concurrency={self.concurrency}")
-        print(f"Listening on queues: {', '.join(self.queues)}")
+        logger.info(
+            "Starting worker concurrency=%d queues=%s",
+            self.concurrency,
+            self.queues,
+        )
         await self.broker.connect()
         self._running = True
         signal.signal(signal.SIGINT, self._handle_signal)
@@ -39,17 +45,16 @@ class Worker:
             await self.stop()
 
     async def stop(self) -> None:
-        print("\nShutting down worker...")
         self._running = False
         if self._tasks:
-            print(f"Waiting for {len(self._tasks)} tasks to complete...")
+            logger.info("Waiting for %d tasks to complete", len(self._tasks))
             await asyncio.gather(*self._tasks, return_exceptions=True)
         await self.broker.disconnect()
-        print("Worker stopped")
+        logger.info("Worker stopped")
 
     def _handle_signal(self, signum: int, frame: Any) -> None:
         self._running = False
-        print(f"\nReceived signal {signum}, shutting down...")
+        logger.info("Received signal %d, shutting down", signum)
 
     async def _run(self) -> None:
         while self._running:
@@ -76,7 +81,7 @@ class Worker:
         args = task_data.get("args", ())
         kwargs = task_data.get("kwargs", {})
 
-        print(f"Processing task {task_id}: {task_name}")
+        logger.info("Processing task %s: %s", task_id, task_name)
 
         try:
             task = get_task(task_name)
@@ -89,10 +94,10 @@ class Worker:
                 result = task.func(*args, **kwargs)
 
             await self.broker.ack_task(task_id)
-            print(f"Task {task_id} completed: {result}")
+            logger.info("Task %s completed: %s", task_id, result)
 
-        except Exception as e:
-            print(f"Task {task_id} failed: {e}")
+        except Exception:
+            logger.exception("Task %s failed", task_id)
             await self.broker.nack_task(task_id, requeue=True)
 
 
