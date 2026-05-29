@@ -54,17 +54,19 @@ await broker.send_task("add", task_id="task-1", args=(5, 3), kwargs={})
 ### Run a worker
 
 ```bash
-uv run taskflow worker --queues default --concurrency 5
+uv run taskflow worker -q default -c 5 -I myapp.tasks
 ```
+
+The `-I` flag imports modules before starting, registering their tasks.
 
 ### Example
 
 ```bash
 # Terminal 1
-task worker
+task example:worker
 
 # Terminal 2
-task example
+task example:submit
 ```
 
 ## Development

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 
 import click
 
@@ -25,8 +26,24 @@ def cli() -> None:
     help="Queues to consume",
 )
 @click.option("--concurrency", "-c", default=10, help="Number of concurrent tasks")
-def worker(host: str, port: int, queues: tuple[str, ...], concurrency: int) -> None:
+@click.option(
+    "--import",
+    "-I",
+    "imports",
+    multiple=True,
+    help="Modules to import before starting (registers tasks)",
+)
+def worker(
+    host: str,
+    port: int,
+    queues: tuple[str, ...],
+    concurrency: int,
+    imports: tuple[str, ...],
+) -> None:
     """Start a worker to process tasks."""
+    for module in imports:
+        importlib.import_module(module)
+
     asyncio.run(
         run_worker(
             host=host,

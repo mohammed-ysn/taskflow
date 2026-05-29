@@ -89,8 +89,13 @@ tasks:
     cmds:
       - uv run taskflow worker -q default -c 5 {{.CLI_ARGS}}
 
-  example:
-    desc: Submit example tasks (requires Redis + worker running)
+  example:worker:
+    desc: Run worker for examples
+    cmds:
+      - uv run python examples/simple_example.py worker {{.CLI_ARGS}}
+
+  example:submit:
+    desc: Submit example tasks (requires Redis + example:worker running)
     cmds:
       - uv run python examples/simple_example.py submit {{.CLI_ARGS}}
 
@@ -100,7 +105,7 @@ tasks:
     desc: Install deps and start Redis
     deps: [install, redis:up]
     cmds:
-      - echo "Ready — run 'task worker' and 'task example' in separate terminals"
+      - echo "Ready — run 'task example:worker' and 'task example:submit' in separate terminals"
 
   clean:
     desc: Remove build artefacts and caches
