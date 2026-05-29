@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -87,6 +88,20 @@ async def test_sync_task_runs_in_executor() -> None:
 
     task.func.assert_called_once_with()
     ack_task.assert_awaited_once_with("test-id")
+
+
+@pytest.mark.asyncio
+async def test_task_timeout_counts_as_failure() -> None:
+    worker, ack_task, nack_task = _make_worker()
+    task = _make_task(max_retries=3)
+    task.config.timeout = 0.01
+    task.func = AsyncMock(side_effect=asyncio.TimeoutError)
+
+    with patch("taskflow.worker.executor.get_task", return_value=task):
+        await worker._process_task(_task_data(retries=0))
+
+    nack_task.assert_awaited_once_with("test-id", requeue=True)
+    ack_task.assert_not_awaited()
 
 
 @pytest.mark.asyncio

@@ -91,12 +91,12 @@ class Worker:
                 return
 
             if asyncio.iscoroutinefunction(task.func):
-                result = await task.func(*args, **kwargs)
+                coro = task.func(*args, **kwargs)
             else:
                 loop = asyncio.get_running_loop()
-                result = await loop.run_in_executor(
-                    None, lambda: task.func(*args, **kwargs),
-                )
+                coro = loop.run_in_executor(None, lambda: task.func(*args, **kwargs))
+
+            result = await asyncio.wait_for(coro, timeout=task.config.timeout)
 
             await self.broker.ack_task(task_id)
             logger.info("Task %s completed: %s", task_id, result)
