@@ -1,16 +1,18 @@
 # Taskflow
 
-A modern distributed task queue for Python, built with asyncio and Redis.
+Async distributed task queue for Python, backed by Redis.
 
 ## Features
 
-- Async-first design with asyncio
 - Priority queues via Redis sorted sets
-- Automatic retry on failure with configurable backoff
-- Concurrent task processing
-- Decorator-based task registration
-- Rate limiting and circuit breaker middleware
-- Delayed and periodic task scheduling
+- Automatic retry with configurable max attempts
+- Per-task timeout enforcement
+- Dead letter queue for exhausted tasks
+- Concurrent async + sync task execution
+- Rate limiting (sliding window, token bucket, leaky bucket)
+- Circuit breaker middleware
+- Delayed, periodic, and cron scheduling
+- TLS and password auth for Redis
 
 ## Requirements
 
@@ -23,11 +25,6 @@ A modern distributed task queue for Python, built with asyncio and Redis.
 git clone https://github.com/mohammed-ysn/taskflow.git
 cd taskflow
 uv sync
-```
-
-Start Redis:
-
-```bash
 task redis:up
 ```
 
@@ -36,9 +33,13 @@ task redis:up
 ```python
 from taskflow.core.task import task
 
-@task(name="add")
+@task(name="add", max_retries=3, timeout=30)
 def add(x: int, y: int) -> int:
     return x + y
+
+@task(name="fetch", queue="high")
+async def fetch(url: str) -> str:
+    ...
 ```
 
 ### Submit tasks
@@ -48,26 +49,34 @@ from taskflow.broker.redis_broker import RedisBroker
 
 broker = RedisBroker()
 await broker.connect()
-await broker.send_task("add", task_id="task-1", args=(5, 3), kwargs={})
+await broker.send_task(
+    task_name="add",
+    task_id="task-1",
+    args=(5, 3),
+    kwargs={},
+    queue="default",
+    priority=5,
+)
 ```
 
 ### Run a worker
 
 ```bash
-uv run taskflow worker -q default -c 5 -I myapp.tasks
+# -I imports your module, registering its @task functions
+uv run taskflow worker -q default -c 10 -I myapp.tasks
 ```
 
-The `-I` flag imports modules before starting, registering their tasks.
+### Inspect the dead letter queue
 
-### Example
-
-```bash
-# Terminal 1
-task example:worker
-
-# Terminal 2
-task example:submit
+```python
+entries = await broker.get_dlq()
+for task_id, data in entries.items():
+    print(task_id, data["name"], data["retries"])
 ```
+
+## Examples
+
+Self-contained examples in `examples/` cover priorities, retries, timeouts, middleware, and scheduling. Run `task --list` to see all available commands.
 
 ## Development
 
@@ -75,5 +84,6 @@ task example:submit
 uv sync --all-groups  # install all deps (editable)
 task lint             # format + lint + type-check
 task test             # run all tests
-task ci               # lint + test (no auto-fix, mirrors CI)
+task ci               # lint + test without auto-fix (mirrors CI)
+task redis:flush      # clear queues and DLQ
 ```
