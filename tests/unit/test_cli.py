@@ -18,7 +18,8 @@ def test_worker_imports_modules_before_starting() -> None:
         with patch("asyncio.run"):
             runner = CliRunner()
             result = runner.invoke(
-                cli, ["worker", "--import", "examples.simple_example"],
+                cli,
+                ["worker", "--import", "examples.simple_example"],
             )
 
     assert result.exit_code == 0, result.output
