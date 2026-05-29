@@ -11,10 +11,9 @@ tasks:
     silent: true
 
   install:
-    desc: Install deps and configure pre-commit hooks
+    desc: Install deps
     cmds:
       - uv sync --all-groups
-      - uv run --dev pre-commit install
 
   # ---- Code quality ----
 
