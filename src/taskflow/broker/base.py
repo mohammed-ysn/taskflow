@@ -41,3 +41,14 @@ class BaseBroker(ABC):
 
     @abstractmethod
     async def get_dlq(self) -> dict[str, dict[str, Any]]: ...
+
+    @abstractmethod
+    async def store_result(
+        self,
+        task_id: str,
+        result: dict[str, Any],
+        ttl: int | None = None,
+    ) -> None: ...
+
+    @abstractmethod
+    async def get_result(self, task_id: str) -> dict[str, Any] | None: ...

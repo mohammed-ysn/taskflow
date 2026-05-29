@@ -218,3 +218,38 @@ async def test_multiple_queues(redis_broker: RedisBroker) -> None:
     # Both queues should now be empty
     assert await redis_broker.receive_task(queue="queue1") is None
     assert await redis_broker.receive_task(queue="queue2") is None
+
+
+@pytest.mark.asyncio
+async def test_store_and_get_result(redis_broker: RedisBroker) -> None:
+    task_id = str(uuid.uuid4())
+    payload = {"status": "success", "result": 54, "completed_at": 1234567890.0}
+
+    await redis_broker.store_result(task_id, payload)
+    retrieved = await redis_broker.get_result(task_id)
+
+    assert retrieved is not None
+    assert retrieved["status"] == "success"
+    assert retrieved["result"] == 54
+
+
+@pytest.mark.asyncio
+async def test_get_result_returns_none_for_unknown(redis_broker: RedisBroker) -> None:
+    result = await redis_broker.get_result("nonexistent-task-id")
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_result_ttl_expires(redis_broker: RedisBroker) -> None:
+    import asyncio
+
+    task_id = str(uuid.uuid4())
+    await redis_broker.store_result(
+        task_id,
+        {"status": "success", "result": "hi"},
+        ttl=1,
+    )
+
+    assert await redis_broker.get_result(task_id) is not None
+    await asyncio.sleep(1.5)
+    assert await redis_broker.get_result(task_id) is None

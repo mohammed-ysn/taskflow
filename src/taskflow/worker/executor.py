@@ -6,6 +6,7 @@ import asyncio
 import inspect
 import logging
 import signal
+import time
 from typing import Any
 
 from taskflow.broker.base import BaseBroker
@@ -99,10 +100,15 @@ class Worker:
 
             result = await asyncio.wait_for(coro, timeout=task.config.timeout)
 
+            await self.broker.store_result(
+                task_id,
+                {"status": "success", "result": result, "completed_at": time.time()},
+                ttl=task.config.result_ttl,
+            )
             await self.broker.ack_task(task_id)
             logger.info("Task %s completed: %s", task_id, result)
 
-        except Exception:
+        except Exception as exc:
             retries = task_data.get("retries", 0)
             max_retries = task.config.max_retries if task else 0
             if retries >= max_retries:
@@ -110,6 +116,15 @@ class Worker:
                     "Task %s exhausted %d retries - sending to DLQ",
                     task_id,
                     retries,
+                )
+                await self.broker.store_result(
+                    task_id,
+                    {
+                        "status": "failure",
+                        "error": str(exc),
+                        "completed_at": time.time(),
+                    },
+                    ttl=task.config.result_ttl if task else None,
                 )
                 await self.broker.dead_letter(task_id, task_data)
                 await self.broker.ack_task(task_id)

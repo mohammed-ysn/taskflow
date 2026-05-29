@@ -144,3 +144,22 @@ class RedisBroker(BaseBroker):
             (k.decode() if isinstance(k, bytes) else k): json.loads(v)
             for k, v in entries.items()
         }
+
+    async def store_result(
+        self,
+        task_id: str,
+        result: dict[str, Any],
+        ttl: int | None = None,
+    ) -> None:
+        client = self._ensure_connected()
+        key = f"taskflow:results:{task_id}"
+        await client.set(key, json.dumps(result))
+        if ttl is not None:
+            await client.expire(key, ttl)
+
+    async def get_result(self, task_id: str) -> dict[str, Any] | None:
+        client = self._ensure_connected()
+        value = await client.get(f"taskflow:results:{task_id}")
+        if value is None:
+            return None
+        return json.loads(value)  # type: ignore[arg-type]

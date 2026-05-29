@@ -19,6 +19,7 @@ class TaskConfig:
     priority: int = 5
     queue: str = "default"
     retry_backoff: float = 1.0
+    result_ttl: int | None = None  # seconds; None = keep forever
 
 
 @dataclass
@@ -39,6 +40,7 @@ def task(
     priority: int = 5,
     queue: str = "default",
     retry_backoff: float = 1.0,
+    result_ttl: int | None = None,
 ) -> Callable[[F], Task]:
     """Decorator to register a function as a task."""
 
@@ -53,6 +55,7 @@ def task(
             priority=priority,
             queue=queue,
             retry_backoff=retry_backoff,
+            result_ttl=result_ttl,
         )
         task_obj = Task(
             name=task_name,
