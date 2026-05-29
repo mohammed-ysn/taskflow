@@ -2,11 +2,11 @@
 
 import asyncio
 import logging
-import uuid
 
 import click
 
 from taskflow.broker.redis_broker import RedisBroker
+from taskflow.client import TaskflowClient
 from taskflow.core.task import task
 from taskflow.worker.executor import Worker
 
@@ -43,9 +43,7 @@ def submit(host: str, port: int) -> None:
 
 
 async def _submit(host: str, port: int) -> None:
-    broker = RedisBroker(host=host, port=port)
-    await broker.connect()
-    try:
+    async with TaskflowClient(host=host, port=port) as client:
         submissions = [
             ("greet", (), {"name": "world"}),
             ("greet", (), {"name": "TaskFlow"}),
@@ -53,16 +51,8 @@ async def _submit(host: str, port: int) -> None:
             ("slow_add", (10, 20), {}),
         ]
         for task_name, args, kwargs in submissions:
-            task_id = str(uuid.uuid4())
-            await broker.send_task(
-                task_name=task_name,
-                task_id=task_id,
-                args=args,
-                kwargs=kwargs,
-            )
+            task_id = await client.submit(task_name, args=args, kwargs=kwargs)
             click.echo(f"Submitted {task_name} [{task_id[:8]}]")
-    finally:
-        await broker.disconnect()
 
 
 @cli.command()

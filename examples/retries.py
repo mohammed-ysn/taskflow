@@ -7,6 +7,7 @@ import uuid
 import click
 
 from taskflow.broker.redis_broker import RedisBroker
+from taskflow.client import TaskflowClient
 from taskflow.core.task import task
 from taskflow.worker.executor import Worker
 
@@ -16,10 +17,10 @@ _attempt_counts: dict[str, int] = {}
 
 
 @task(name="flaky", max_retries=3)
-def flaky(task_id: str, fail_until: int = 2) -> str:
+def flaky(tracking_id: str, fail_until: int = 2) -> str:
     """Succeeds on attempt (fail_until + 1), fails before that."""
-    _attempt_counts[task_id] = _attempt_counts.get(task_id, 0) + 1
-    attempt = _attempt_counts[task_id]
+    _attempt_counts[tracking_id] = _attempt_counts.get(tracking_id, 0) + 1
+    attempt = _attempt_counts[tracking_id]
     if attempt <= fail_until:
         raise ValueError(f"Simulated failure (attempt {attempt}/{fail_until})")
     return f"Succeeded on attempt {attempt}"
@@ -44,28 +45,16 @@ def submit(host: str, port: int) -> None:
 
 
 async def _submit(host: str, port: int) -> None:
-    broker = RedisBroker(host=host, port=port)
-    await broker.connect()
-    try:
-        flaky_id = str(uuid.uuid4())
-        await broker.send_task(
-            task_name="flaky",
-            task_id=flaky_id,
-            args=(),
-            kwargs={"task_id": flaky_id, "fail_until": 2},
+    async with TaskflowClient(host=host, port=port) as client:
+        tracking_id = str(uuid.uuid4())
+        flaky_id = await client.submit(
+            "flaky",
+            kwargs={"tracking_id": tracking_id, "fail_until": 2},
         )
         click.echo(f"Submitted flaky [{flaky_id[:8]}] — will fail twice then succeed")
 
-        doomed_id = str(uuid.uuid4())
-        await broker.send_task(
-            task_name="always_fails",
-            task_id=doomed_id,
-            args=(),
-            kwargs={},
-        )
+        doomed_id = await client.submit("always_fails")
         click.echo(f"Submitted always_fails [{doomed_id[:8]}] — exhausts retries → DLQ")
-    finally:
-        await broker.disconnect()
 
 
 @cli.command()
@@ -91,10 +80,8 @@ def inspect_dlq(host: str, port: int) -> None:
 
 
 async def _inspect_dlq(host: str, port: int) -> None:
-    broker = RedisBroker(host=host, port=port)
-    await broker.connect()
-    try:
-        entries = await broker.get_dlq()
+    async with TaskflowClient(host=host, port=port) as client:
+        entries = await client.dlq()
         if not entries:
             click.echo("DLQ is empty")
             return
@@ -102,8 +89,6 @@ async def _inspect_dlq(host: str, port: int) -> None:
         for task_id, data in entries.items():
             name, retries = data["name"], data["retries"]
             click.echo(f"  {task_id[:8]}  name={name}  retries={retries}")
-    finally:
-        await broker.disconnect()
 
 
 if __name__ == "__main__":
